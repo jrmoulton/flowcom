@@ -13,6 +13,6 @@ repository = "https://github.com/jrmoulton/flowcom"
 
 [dependencies]
 crossbeam-channel = "0.5.11"
-floem = { git = "https://github.com/lapce/floem",  rev = "341afd255f98ca431e4f615864daa4dbcc057501", default-features = false }
+floem = { git = "https://github.com/lapce/floem", rev = "341afd255f98ca431e4f615864daa4dbcc057501", default_features = false}
 im = "15.1.0"
 nucleo = "0.4.0"
