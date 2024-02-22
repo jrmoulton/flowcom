@@ -1,0 +1,18 @@
+[package]
+name = "flowcom"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jared Moulton <jaredmoulton3@gmail.com>"]
+license = "MIT"
+description = """
+flowcom is a collection of UI components for floem
+"""
+homepage = "https://github.com/jrmoulton/flowcom"
+repository = "https://github.com/jrmoulton/flowcom"
+
+
+[dependencies]
+crossbeam-channel = "0.5.11"
+# floem = { git = "https://github.com/lapce/floem", default-features = false }
+im = "15.1.0"
+nucleo = "0.4.0"
