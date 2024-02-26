@@ -12,7 +12,10 @@ repository = "https://github.com/jrmoulton/flowcom"
 
 
 [dependencies]
+chrono = "0.4.34"
 crossbeam-channel = "0.5.11"
-floem = { git = "https://github.com/lapce/floem", rev = "341afd255f98ca431e4f615864daa4dbcc057501", default_features = false}
+# floem = { git = "https://github.com/lapce/floem", rev = "341afd255f98ca431e4f615864daa4dbcc057501", default_features = false}
+floem = {path = "../floem/main"}
 im = "15.1.0"
 nucleo = "0.4.0"
+lucide-floem = {path = "../lucide-floem"}
