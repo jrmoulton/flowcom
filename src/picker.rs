@@ -3,15 +3,16 @@ use std::{any::Any, cell::RefCell, hash::Hash, rc::Rc, sync::Arc, time::Duration
 use floem::{
     action::exec_after,
     ext_event::create_signal_from_channel,
-    id::Id,
-    keyboard::{Key, ModifiersState, NamedKey},
+    keyboard::{Key, Modifiers, NamedKey},
     kurbo::Rect,
     reactive::{create_effect, RwSignal, Trigger},
     style_class,
     unit::PxPctAuto,
-    view::{AnyView, View, ViewData, Widget},
-    views::{scroll, v_stack, Decorators, VirtualDirection, VirtualItemSize, VirtualVector},
-    widgets::{text_input, virtual_list, ListClass},
+    views::{
+        scroll, text_input, v_stack, virtual_list, Decorators, ListClass, VirtualDirection,
+        VirtualItemSize, VirtualVector,
+    },
+    AnyView, IntoView, View, ViewId,
 };
 use nucleo::{
     pattern::{CaseMatching, Normalization},
@@ -77,7 +78,7 @@ where
         }),
         text_input(input_sig).style(|s| s.width_full()).on_key_down(
             Key::Named(NamedKey::ArrowUp),
-            ModifiersState::empty(),
+            Modifiers::empty(),
             |_| {},
         ),
     ))
@@ -100,9 +101,8 @@ pub enum ResultOrdering {
 }
 
 pub struct FuzzyPicker<T: Sync + Send + Clone + 'static> {
-    data: ViewData,
+    id: ViewId,
     picker: Rc<RefCell<Nucleo<T>>>,
-    child: Box<dyn Widget>,
     prev_filter: String,
     update: Trigger,
 }
@@ -118,7 +118,7 @@ where
     KF: Fn(&T) -> K + 'static,
     K: Eq + Hash + 'static,
 {
-    let id = Id::next();
+    let id = ViewId::new();
 
     let (update_tracker_tx, update_tracker_rx) = crossbeam_channel::bounded(2);
     let update_tracker = create_signal_from_channel(update_tracker_rx);
@@ -156,11 +156,11 @@ where
         move |vals| key_fn(vals),
         view_fn,
     )
-    .build();
+    .into_any();
+    id.add_child(child);
     FuzzyPicker {
-        data: ViewData::new(id),
+        id,
         picker,
-        child,
         prev_filter: String::new(),
         update,
     }
@@ -168,41 +168,8 @@ where
 }
 
 impl<T: Send + Sync + Clone + ToString + 'static> View for FuzzyPicker<T> {
-    fn view_data(&self) -> &ViewData {
-        &self.data
-    }
-
-    fn view_data_mut(&mut self) -> &mut ViewData {
-        &mut self.data
-    }
-
-    fn build(self) -> Box<dyn Widget> {
-        Box::new(self)
-    }
-}
-
-impl<T: Send + Sync + Clone + ToString + 'static> Widget for FuzzyPicker<T> {
-    fn view_data(&self) -> &ViewData {
-        &self.data
-    }
-
-    fn view_data_mut(&mut self) -> &mut ViewData {
-        &mut self.data
-    }
-
-    fn for_each_child<'a>(&'a self, for_each: &mut dyn FnMut(&'a dyn Widget) -> bool) {
-        for_each(&self.child);
-    }
-
-    fn for_each_child_mut<'a>(&'a mut self, for_each: &mut dyn FnMut(&'a mut dyn Widget) -> bool) {
-        for_each(&mut self.child);
-    }
-
-    fn for_each_child_rev_mut<'a>(
-        &'a mut self,
-        for_each: &mut dyn FnMut(&'a mut dyn Widget) -> bool,
-    ) {
-        for_each(&mut self.child);
+    fn id(&self) -> ViewId {
+        self.id
     }
 
     fn update(&mut self, _cx: &mut floem::context::UpdateCx, state: Box<dyn std::any::Any>) {
@@ -235,7 +202,7 @@ impl<T: Send + Sync + Clone + ToString + 'static> Widget for FuzzyPicker<T> {
                         let injector = self.picker.borrow_mut().injector();
 
                         for item in *items {
-                            injector.push(item.clone(), |cols| cols[0] = item.to_string().into());
+                            injector.push(item, |item, cols| cols[0] = item.to_string().into());
                         }
                     }
                 }
@@ -252,7 +219,7 @@ impl<T: Send + Sync + Clone + 'static> FuzzyPicker<T> {
     pub fn on_select() {}
 
     pub fn update_filter(self, filter: impl Fn() -> String + 'static) -> Self {
-        let id = self.data.id();
+        let id = self.id;
         create_effect(move |_| {
             let filter = filter();
             id.update_state(PickerUpdate::Filter(filter));

@@ -12,10 +12,23 @@ repository = "https://github.com/jrmoulton/flowcom"
 
 
 [dependencies]
-chrono = "0.4.34"
-crossbeam-channel = "0.5.11"
-# floem = { git = "https://github.com/lapce/floem", rev = "341afd255f98ca431e4f615864daa4dbcc057501", default_features = false}
-floem = {path = "../floem/main"}
-im = "15.1.0"
-nucleo = "0.4.0"
-lucide-floem = {path = "../lucide-floem"}
+# crossbeam-channel = "0.5.11"
+# floem = { git = "https://github.com/lapce/floem" }
+floem = { path = "../floem", default-features = false, features = ["futures"]}
+# im = "15.1.0"
+# nucleo = {git = "https://github.com/helix-editor/nucleo"}
+# lucide-floem = { git = "https://github.com/jrmoulton/lucide-floem", features = [
+#     "use-lapce",
+# ] }
+lucide-floem = { path = "../lucide-floem" }
+# jiff = "0.1.4"
+
+helix-view = {path = "../helix/helix-view", default-features = false}
+helix-loader = {path = "../helix/helix-loader"}
+helix-core = {path = "../helix/helix-core"}
+arc-swap = "1.7.1"
+tokio = {version = "1.39.2"}
+tokio-stream = "0.1.15"
+
+# [dev-dependencies]
+# tokio
