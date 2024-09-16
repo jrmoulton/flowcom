@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::collections::{hash_map, HashMap};
 use std::path::Path;
 use std::sync::Arc;
@@ -9,13 +8,13 @@ use floem::Renderer as FloemRenderer;
 use arc_swap::access::Map;
 use arc_swap::ArcSwap;
 use floem::{prop_extractor, IntoView, View, ViewId};
-use helix_core::{pos_at_coords, Position, Selection};
+use helix_core::{pos_at_coords, Position, Selection, Transaction};
 use helix_view::graphics::Rect as HelixRect;
 use helix_view::handlers::Handlers;
 use helix_view::{doc_mut, handlers, theme, DocumentId};
 use helix_view::{editor::Config, Editor};
 
-use floem::style::{FontProps, LineHeight, Style, TextColor};
+use floem::style::{CustomStylable, FontProps, LineHeight, Style, TextColor};
 
 prop_extractor! {
     Extractor {
@@ -106,14 +105,33 @@ impl View for HelixEditor {
         // }
     }
 
+    fn event_before_children(&mut self, _cx: &mut floem::context::EventCx, event: &floem::event::Event) -> floem::event::EventPropagation {
+        match event{
+            // TODO: Handle these
+            floem::event::Event::PointerDown(_) => {},
+            floem::event::Event::PointerUp(_) => {},
+            floem::event::Event::PointerMove(_) => {},
+            floem::event::Event::PointerWheel(_) => {},
+            floem::event::Event::DroppedFile(_) => {},
+            floem::event::Event::KeyDown(ke) => {
+                self.handle_key_event(ke);
+            },
+            floem::event::Event::FocusGained => {},
+            floem::event::Event::FocusLost => {},
+            _ => {}
+        }
+        floem::event::EventPropagation::Stop
+    }
+
 
     fn compute_layout(&mut self, _cx: &mut floem::context::ComputeLayoutCx) -> Option<floem::kurbo::Rect> {
         let layout = self.id.get_layout().unwrap_or_default();
         let size = layout.size;
         self.size = (size.width as f64, size.height as f64).into();
 
-        // let helix-size = compute here
+        let helix_size = todo!("compute this");
         self.editor.resize(helix_size);
+
         for (view, focused) in self.editor.tree.views() {
             let id = view.id;
             let area = view.area;
@@ -376,6 +394,20 @@ impl HelixEditor {
         }
 
     }
+
+    fn handle_key_event(&self, ke: &floem::keyboard::KeyEvent) -> _ {
+        if ke.modifiers.is_empty() {
+            let focused = self.editor.tree.focus;
+            let view = self.editor.tree.get(focused);
+            let current_doc = view.doc;
+            Transaction::default()
+                self.editor.document(current_doc).unwrap().apply(, )
+            view.apply(, )
+            view.apply( )
+
+            
+        }
+    }
 }
 
 pub fn test() -> impl IntoView {
@@ -455,6 +487,5 @@ pub fn test() -> impl IntoView {
 
     "this"
 }
-
 
 

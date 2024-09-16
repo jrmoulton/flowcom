@@ -1,10 +1,15 @@
 use floem::{
+    action::show_context_menu,
     event::{Event, EventListener},
     keyboard::{Key, NamedKey},
+    menu::{Menu, MenuEntry, MenuItem},
     peniko::Color,
-    reactive::RwSignal,
+    reactive::{RwSignal, SignalGet, SignalUpdate},
     unit::UnitExt,
-    views::{scroll, stack, text_input, toggle_button, Decorators},
+    views::{
+        scroll::{self, ScrollClass, ScrollCustomStyle},
+        stack, text_input, toggle_button, Decorators, LabelClass,
+    },
     View as _,
 };
 use flowcom::calendar::{self, CalendarCustomStyle, CalendarDays, DatePickerClass};
@@ -43,15 +48,19 @@ pub fn main() {
         })
         .class(calendar::OtherMonth, move |s| {
             s.color(not_focused2)
-                .apply_if(!show_other_dates.get(), |s| {
-                    s.color(Color::TRANSPARENT)
-                        .outline_color(Color::TRANSPARENT)
-                })
+                .apply_if(!show_other_dates.get(), |s| s.hide())
         })
         .class(calendar::Weekend, move |s| {
             s.background(weekend_background).color(not_focused1)
         })
-        .class(DateGridClass, |s| s.gap(5))
+        .class(calendar::Today, move |s| {
+            s.class(DateContainerClass, |s| {
+                s.background(Color::rgb8(11, 130, 238).with_alpha_factor(0.9))
+                    .border_radius(50.pct())
+                    .padding(5)
+            })
+        })
+        .class(DateGridClass, |s| s.gap(5).padding_right(10 + 5))
         .width_full()
     });
 
@@ -61,7 +70,7 @@ pub fn main() {
     let num_days_input = text_input(extra_days);
 
     let app_view = stack((
-        scroll(date_picker).scroll_style(|s| s.shrink_to_fit()),
+        scroll::scroll(date_picker).scroll_style(|s| s.shrink_to_fit()),
         ("Show all dates", toggle_button).style(|s| s.gap(10).items_center()),
         ("Number of extra days", num_days_input).style(|s| s.gap(10).items_center()),
     ))
@@ -69,24 +78,38 @@ pub fn main() {
         s.size_full()
             .justify_center()
             .items_center()
-            .padding(15.)
+            .padding_bottom(15.)
             .gap(10)
             .color(black)
             .flex_col()
             .class(DatePickerClass, |s| {
                 s.apply_custom(CalendarCustomStyle::new().show_minimum(calendar::ShowMinimum::Week))
             })
+            .class(ScrollClass, |s| {
+                s.apply_custom(
+                    ScrollCustomStyle::new()
+                        .handle_thickness(10)
+                        .handle_border_radius(100.pct()),
+                )
+            })
     })
     .on_resize(move |rect| window_aspect_ratio.set(1. / rect.aspect_ratio() as f32));
+
     let id = app_view.id();
-    let app_view = app_view.on_event_stop(EventListener::KeyUp, move |e| {
-        if let Event::KeyUp(e) = e {
-            // F11 for the inspector
-            if e.key.logical_key == Key::Named(NamedKey::F11) {
-                id.inspect();
+    let app_view = app_view
+        .on_event_stop(EventListener::KeyUp, move |e| {
+            if let Event::KeyUp(e) = e {
+                // F11 for the inspector
+                if e.key.logical_key == Key::Named(NamedKey::F11) {
+                    id.inspect();
+                }
             }
-        }
-    });
+        })
+        .context_menu(move || {
+            Menu::new("").entry(MenuEntry::Item(
+                MenuItem::new("Inspector").action(move || id.inspect()),
+            ))
+        });
 
     floem::launch(move || app_view);
 }

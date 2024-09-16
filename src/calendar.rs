@@ -1,12 +1,12 @@
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use floem::{
     prop, prop_extractor,
-    reactive::{create_memo, RwSignal},
+    reactive::{create_memo, RwSignal, SignalGet, SignalUpdate},
     style::{CustomStylable, Style, StylePropValue},
     style_class,
     taffy::{style_helpers::*, GridTrackRepetition},
-    views::{dyn_stack, text, Decorators},
+    views::{container, dyn_stack, text, Decorators, VirtualVector},
     IntoView, View, ViewId,
 };
 use jiff::{
@@ -87,6 +87,24 @@ impl Iterator for CalendarDays {
     }
 }
 
+impl VirtualVector<Date> for CalendarDays {
+    fn total_len(&self) -> usize {
+        self.end_date.sub(self.start_date).get_days().abs() as usize
+    }
+
+    fn slice(&mut self, range: std::ops::Range<usize>) -> impl Iterator<Item = Date> {
+        let start_date = self
+            .start_date
+            .add(jiff::Span::new().days(range.start as i64));
+        let end_date = start_date.add(jiff::Span::new().days((range.end - range.start) as i64));
+        CalendarDays {
+            start_date,
+            end_date,
+        }
+    }
+}
+
+style_class!(pub Today);
 style_class!(pub Weekend);
 style_class!(pub OtherMonth);
 
@@ -117,7 +135,9 @@ impl CalendarDay {
     pub fn basic(date: Date) -> Self {
         Self::new(
             date,
-            text(date.day()).style(|s| s.items_center().justify_center()),
+            container(text(date.day()))
+                .style(|s| s.items_center().justify_center())
+                .class(DateContainerClass),
         )
     }
 }
@@ -176,95 +196,6 @@ impl View for Calendar {
         }
     }
 
-    // fn layout(&mut self, cx: &mut floem::context::LayoutCx) -> floem::taffy::tree::NodeId {
-    //     cx.layout_node(self.id(), true, |cx| {
-    //         let nodes = self
-    //             .id
-    //             .children()
-    //             .into_iter()
-    //             .map(|id| id.view().borrow_mut().layout(cx))
-    //             .collect::<Vec<_>>();
-    //         let content_size = match self.direction {
-    //             VirtualDirection::Vertical => taffy::prelude::Size {
-    //                 width: Dimension::Percent(1.0),
-    //                 height: Dimension::Length(self.content_size as f32),
-    //             },
-    //             VirtualDirection::Horizontal => taffy::prelude::Size {
-    //                 width: Dimension::Length(self.content_size as f32),
-    //                 height: Dimension::Percent(1.0),
-    //             },
-    //         };
-    //         if self.offset_node.is_none() {
-    //             self.offset_node = Some(
-    //                 self.id
-    //                     .taffy()
-    //                     .borrow_mut()
-    //                     .new_leaf(taffy::style::Style::DEFAULT)
-    //                     .unwrap(),
-    //             );
-    //         }
-    //         if self.content_node.is_none() {
-    //             self.content_node = Some(
-    //                 self.id
-    //                     .taffy()
-    //                     .borrow_mut()
-    //                     .new_leaf(taffy::style::Style::DEFAULT)
-    //                     .unwrap(),
-    //             );
-    //         }
-    //         let offset_node = self.offset_node.unwrap();
-    //         let content_node = self.content_node.unwrap();
-    //         let _ = self.id.taffy().borrow_mut().set_style(
-    //             offset_node,
-    //             taffy::style::Style {
-    //                 position: taffy::style::Position::Relative,
-    //                 padding: match self.direction {
-    //                     VirtualDirection::Vertical => taffy::prelude::Rect {
-    //                         left: LengthPercentage::Length(0.0),
-    //                         top: LengthPercentage::Length(self.before_size as f32),
-    //                         right: LengthPercentage::Length(0.0),
-    //                         bottom: LengthPercentage::Length(0.0),
-    //                     },
-    //                     VirtualDirection::Horizontal => taffy::prelude::Rect {
-    //                         left: LengthPercentage::Length(self.before_size as f32),
-    //                         top: LengthPercentage::Length(0.0),
-    //                         right: LengthPercentage::Length(0.0),
-    //                         bottom: LengthPercentage::Length(0.0),
-    //                     },
-    //                 },
-    //                 flex_direction: match self.direction {
-    //                     VirtualDirection::Vertical => FlexDirection::Column,
-    //                     VirtualDirection::Horizontal => FlexDirection::Row,
-    //                 },
-    //                 size: taffy::prelude::Size {
-    //                     width: Dimension::Percent(1.0),
-    //                     height: Dimension::Percent(1.0),
-    //                 },
-    //                 ..Default::default()
-    //             },
-    //         );
-    //         let _ = self.id.taffy().borrow_mut().set_style(
-    //             content_node,
-    //             taffy::style::Style {
-    //                 min_size: content_size,
-    //                 size: content_size,
-    //                 ..Default::default()
-    //             },
-    //         );
-    //         let _ = self
-    //             .id
-    //             .taffy()
-    //             .borrow_mut()
-    //             .set_children(offset_node, &nodes);
-    //         let _ = self
-    //             .id
-    //             .taffy()
-    //             .borrow_mut()
-    //             .set_children(content_node, &[offset_node]);
-    //         vec![content_node]
-    //     })
-    // }
-
     // fn compute_layout(
     //     &mut self,
     //     cx: &mut floem::context::ComputeLayoutCx,
@@ -295,6 +226,7 @@ impl Calendar {
             },
             |(date, _)| *date,
             move |(date, _show_minimum)| {
+                let today = move || date == active_date.get();
                 let weekend = move || date.weekday() as u8 >= Weekday::Saturday as u8;
                 let other_month = move || {
                     date.month() != active_date.get().month()
@@ -305,6 +237,7 @@ impl Calendar {
                     .class(DateClass)
                     .class_if(other_month, OtherMonth)
                     .class_if(weekend, Weekend)
+                    .class_if(today, Today)
             },
         )
         .style(|s| {
